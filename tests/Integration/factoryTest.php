@@ -1,6 +1,6 @@
 <?php
 /**
- * Copyright (c) 2010-2011 Arne Blankerts <arne@blankerts.de>
+ * Copyright (c) 2010-2015 Arne Blankerts <arne@blankerts.de>
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without modification,
@@ -35,159 +35,94 @@
  * @copyright  Arne Blankerts <arne@blankerts.de>, All rights reserved.
  * @license    BSD License
  */
-
 namespace TheSeer\phpDox\Tests\Integration {
 
     use TheSeer\phpDox\Factory;
+    use TheSeer\phpDox\FileInfo;
+    use TheSeer\phpDox\Version;
 
+    /**
+     * Class FactoryTest
+     *
+     * @covers TheSeer\phpDox\Factory
+     * @uses TheSeer\phpDox\version
+     */
     class FactoryTest extends \PHPUnit_Framework_TestCase {
 
-        /*********************************************************************/
-        /* Fixtures                                                          */
-        /*********************************************************************/
-
         /**
-         * Provides a stub of the TheSeer\\phpDox\Container class.
-         *
-         * @param array $methods
-         * @return TheSeer\\phpDox\Container
+         * @var Factory
          */
-        protected function getContainerFixture(array $methods) {
-            return $this->getMockBuilder('TheSeer\\phpDox\\Container')
-                ->disableOriginalConstructor()
-                ->setMethods($methods)
-                ->getMock();
-        }
+        private $factory;
 
-
-        /*********************************************************************/
-        /* Tests                                                             */
-        /*********************************************************************/
-
-        /**
-         * @covers TheSeer\phpDox\Factory::getAnalyser
-         */
-        public function testGetAnalyser() {
-            $factory = new Factory();
-            $this->assertInstanceOf('TheSeer\\phpDox\\Analyser', $factory->getInstanceFor('Analyser', array(true)));
-        }
-
-        /**
-         * @covers TheSeer\phpDox\Factory::getApi
-         */
-        public function testGetApi() {
-            $factory = new Factory();
-            $this->assertInstanceOf('TheSeer\\phpDox\\Api', $factory->getInstanceFor('Api'));
-        }
-
-        /**
-         * @dataProvider getLoggerDataprovider
-         * @covers TheSeer\phpDox\Factory::getLogger
-         */
-        public function testGetLogger($expected, $argument) {
-            $factory = new Factory();
-            $this->assertInstanceOf($expected, $factory->getLogger($argument));
+        protected function setUp() {
+            $this->factory = new Factory(new FileInfo(__DIR__), new Version('0.0'));
         }
 
         /**
          * @covers TheSeer\phpDox\Factory::getApplication
+         * @uses TheSeer\phpDox\Application
+         * @uses TheSeer\phpDox\SilentProgressLogger
          */
         public function testGetApplication() {
-            $factory = new Factory();
-            $factory->setXmlDir('/path');
-
             $this->assertInstanceOf(
                 'TheSeer\\phpDox\\Application',
-                $factory->getInstanceFor('Application')
+                $this->factory->getApplication()
             );
-        }
-
-        /**
-         * @covers TheSeer\phpDox\Factory::getContainer
-         */
-        public function testGetContainer() {
-            $factory = new Factory();
-            $container = $factory->getInstanceFor('Container');
-
-            // lazy initialization included
-            $this->assertInstanceOf(
-                'TheSeer\\phpDox\\Container',
-                $container
-            );
-
-            $this->assertSame($container, $factory->getInstanceFor('Container'));
-        }
-
-        /**
-         * @covers TheSeer\phpDox\Factory::getScanner
-         */
-        public function testGetScanner() {
-
         }
 
         /**
          * @covers TheSeer\phpDox\Factory::getCollector
+         * @uses TheSeer\phpDox\SilentProgressLogger
+         * @uses TheSeer\phpDox\FileInfo
+         * @uses TheSeer\phpDox\Collector\Collector
+         * @uses TheSeer\phpDox\Collector\IndexCollection
+         * @uses TheSeer\phpDox\Collector\SourceCollection
+         * @uses TheSeer\phpDox\Collector\Project
+         * @uses TheSeer\phpDox\Collector\Backend\Factory
+         * @uses TheSeer\phpDox\Collector\Backend\PHPParser
+         * @uses TheSeer\phpDox\DocBlock\Parser
          */
         public function testGetCollector() {
+            $config = $this->getMockBuilder('TheSeer\\phpDox\\CollectorConfig')
+                    ->disableOriginalConstructor()
+                    ->getMock();
 
-            $container = $this->getContainerFixture(array('getDocument'));
-            $container
-                ->expects($this->exactly(3))
-                ->method('getDocument')
-                ->will($this->returnValue(new \stdClass));
+            $config->expects($this->once())
+                ->method('getSourceDirectory')
+                ->will($this->returnValue(new FileInfo('')));
 
-            $factory = new FactoryProxy();
-            $factory->instances['container'] = $container;
-            $factory->setXmlDir('/path');
+            $config->expects($this->once())
+                ->method('getWorkDirectory')
+                ->will($this->returnValue(new FileInfo('')));
+
+            $config->expects($this->once())
+                ->method('getBackend')
+                ->will($this->returnValue('parser'));
 
             $this->assertInstanceOf(
-                'TheSeer\\phpDox\\Collector',
-                $factory->getInstanceFor('Collector')
+                'TheSeer\\phpDox\\Collector\\Collector',
+                $this->factory->getCollector($config)
             );
         }
 
         /**
          * @covers TheSeer\phpDox\Factory::getGenerator
+         * @uses TheSeer\phpDox\Generator\Generator
+         * @uses TheSeer\phpDox\SilentProgressLogger
          */
         public function testGetGenerator() {
-            $container = $this->getContainerFixture(array('getDocument'));
-            $container
-                ->expects($this->exactly(3))
-                ->method('getDocument')
-                ->will($this->returnValue(new \stdClass));
-
-            $factory = new FactoryProxy();
-            $factory->instances['container'] = $container;
-            $factory->setXmlDir('/path');
-
             $this->assertInstanceOf(
-                'TheSeer\\phpDox\\Generator',
-                $factory->getInstanceFor('Generator', '/tplDir', '/docDir')
-            );
-        }
-
-        /**
-         * @covers TheSeer\phpDox\Factory::getClassBuilder
-         */
-        public function testGetClassBuilder() {
-            $doc = $this->getMockBuilder('TheSeer\\fDOM\\fDOMElement')
-                ->disableOriginalConstructor()
-                ->getMock();
-
-            $factory = new Factory();
-
-            $this->assertInstanceOf(
-                'TheSeer\\phpDox\\ClassBuilder',
-                $factory->getInstanceFor('ClassBuilder', $doc, true, 'UTF-8')
+                'TheSeer\\phpDox\\Generator\\Generator',
+                $this->factory->getGenerator()
             );
         }
 
         /**
          * @covers TheSeer\phpDox\Factory::getDocblockFactory
+         * @uses TheSeer\phpDox\DocBlock\Factory
          */
         public function testgetDoclockFactory() {
-            $factory = new Factory();
-            $docBlock = $factory->getInstanceFor('DocblockFactory');
+            $docBlock = $this->factory->getDocblockFactory();
 
             // lazy initialization included
             $this->assertInstanceOf(
@@ -195,15 +130,15 @@ namespace TheSeer\phpDox\Tests\Integration {
                 $docBlock
             );
 
-            $this->assertSame($docBlock, $factory->getInstanceFor('DocblockFactory'));
+            $this->assertSame($docBlock, $this->factory->getDocblockFactory());
         }
 
         /**
          * @covers TheSeer\phpDox\Factory::getDocblockParser
+         * @uses TheSeer\phpDox\DocBlock\Parser
          */
         public function testgetDoclockParser() {
-            $factory = new Factory();
-            $docBlock = $factory->getInstanceFor('DocblockParser');
+            $docBlock = $this->factory->getDocblockParser();
 
             // lazy initialization included
             $this->assertInstanceOf(
@@ -211,23 +146,9 @@ namespace TheSeer\phpDox\Tests\Integration {
                 $docBlock
             );
 
-            $this->assertSame($docBlock, $factory->getInstanceFor('DocblockParser'));
+            $this->assertSame($docBlock, $this->factory->getDocblockParser());
         }
 
-
-        /*********************************************************************/
-        /* Dataprovider & Callbacks                                          */
-        /*********************************************************************/
-
-        public static function getLoggerDataprovider() {
-            return array(
-                'shell logger' => array('TheSeer\\phpDox\\ShellProgressLogger', 'shell'),
-                'silent logger' => array('TheSeer\\phpDox\\ProgressLogger', 'silent'),
-            );
-        }
     }
 
-    class FactoryProxy extends Factory {
-        public $instances = array();
-    }
 }

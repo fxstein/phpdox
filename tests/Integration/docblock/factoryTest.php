@@ -1,6 +1,6 @@
 <?php
 /**
- * Copyright (c) 2010-2011 Arne Blankerts <arne@blankerts.de>
+ * Copyright (c) 2010-2015 Arne Blankerts <arne@blankerts.de>
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without modification,
@@ -40,21 +40,16 @@ namespace TheSeer\phpDox\Tests\Integration\DocBlock {
 
     use TheSeer\phpDox\DocBlock\Factory;
 
+    /**
+     * Class FactoryTest
+     *
+     * @covers TheSeer\phpDox\DocBlock\Factory
+     */
     class FactoryTest extends \PHPUnit_Framework_TestCase {
-
-        /*********************************************************************/
-        /* Fixtures                                                          */
-        /*********************************************************************/
-
-
-
-        /*********************************************************************/
-        /* Tests                                                             */
-        /*********************************************************************/
-
 
         /**
          * @covers TheSeer\phpDox\DocBlock\Factory::getElementInstanceFor
+         * @uses TheSeer\phpDox\DocBlock\GenericElement
          */
         public function testGetElementInstanceFor() {
             $factory = new Factory();
@@ -66,6 +61,7 @@ namespace TheSeer\phpDox\Tests\Integration\DocBlock {
 
         /**
          * @covers TheSeer\phpDox\DocBlock\Factory::getParserInstanceFor
+         * @uses TheSeer\phpDox\DocBlock\GenericParser
          */
         public function testGetParserInstanceFor() {
             $factory = new Factory();
@@ -78,9 +74,23 @@ namespace TheSeer\phpDox\Tests\Integration\DocBlock {
         /**
          * @dataProvider getInstanceMapDataprovider
          * @covers TheSeer\phpDox\DocBlock\Factory::getInstanceByMap
+         *
+         * @uses TheSeer\phpDox\Tests\Integration\DocBlock\FactoryProxy
+         * @uses TheSeer\fDOM\fDOMDocument
+         * @uses TheSeer\fDOM\fDOMElement
+         *
+         * @uses TheSeer\phpDox\DocBlock\GenericElement
+         * @uses TheSeer\phpDox\DocBlock\InvalidElement
+         * @uses TheSeer\phpDox\DocBlock\InvalidParser
+         * @uses TheSeer\phpDox\DocBlock\GenericParser
+         * @uses TheSeer\phpDox\DocBlock\DescriptionParser
+         * @uses TheSeer\phpDox\DocBlock\ParamParser
+         * @uses TheSeer\phpDox\DocBlock\VarParser
+         * @uses TheSeer\phpDox\DocBlock\VarParser
+         * @uses TheSeer\phpDox\DocBlock\LicenseParser
+         * @uses TheSeer\phpDox\DocBlock\InternalParser
          */
         public function testGetInstanceByMap($expected, $name, $elementMap) {
-
             $factory = new FactoryProxy();
             $this->assertInstanceOf(
                 $expected,
@@ -90,23 +100,21 @@ namespace TheSeer\phpDox\Tests\Integration\DocBlock {
 
         /**
          * @covers TheSeer\phpDox\DocBlock\Factory::getInstanceByMap
+         * @uses TheSeer\phpDox\Tests\Integration\DocBlock\FactoryProxy
          */
         public function testGetInstanceByMapHandlingAFactory() {
 
-            $factoryStub = $this->getMockBuilder('TheSeer\\phpDox\\DocBlock\\Factory')
-                ->setMethods(array('getInstanceFor'))
-                ->setMockClassName('GnuFactory')
-                ->getMock();
-            $factoryStub
+            $factoryMock = $this->getMock('TheSeer\\phpDox\\FactoryInterface');
+            $factoryMock
                 ->expects($this->once())
                 ->method('getInstanceFor')
                 ->will($this->returnValue(new \stdClass));
 
             $factory = new FactoryProxy();
-            $factory->addParserFactory('GnuFactory', $factoryStub);
+
             $this->assertInstanceOf(
                 '\stdClass',
-                $factory->getInstanceByMap($factory->parserMap, 'GnuFactory')
+                $factory->getInstanceByMap(array('GnuFactory' => $factoryMock), 'GnuFactory')
             );
         }
 
@@ -163,20 +171,6 @@ namespace TheSeer\phpDox\Tests\Integration\DocBlock {
     }
 
     class FactoryProxy extends Factory {
-
-        public $parserMap = array(
-            'invalid' => 'TheSeer\\phpDox\\DocBlock\\InvalidParser',
-            'generic' => 'TheSeer\\phpDox\\DocBlock\\GenericParser',
-
-            'description' => 'TheSeer\\phpDox\\DocBlock\\DescriptionParser',
-            'param' => 'TheSeer\\phpDox\\DocBlock\\ParamParser',
-            'var' => 'TheSeer\\phpDox\\DocBlock\\VarParser',
-            'return' => 'TheSeer\\phpDox\\DocBlock\\VarParser',
-            'license' => 'TheSeer\\phpDox\\DocBlock\\LicenseParser',
-
-            'internal' => 'TheSeer\\phpDox\\DocBlock\\InternalParser'
-        );
-
         public function getInstanceByMap($map, $name, $annotation = null) {
             return parent::getInstanceByMap($map, $name, $annotation);
         }
